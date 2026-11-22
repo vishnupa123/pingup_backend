@@ -49,14 +49,17 @@ export const createStory = async (req, res) => {
 
 export const getStoryFeed = async (req, res) => {
   try {
-    const me = await User.findById(req.user.id).select('following');
+    const me = await User.findById(req.user.id).select('following followers');
     if (!me) return res.status(404).json({ message: 'User not found' });
 
-    // Show stories only from users I follow
-    const followingIds = (me.following || []).map((id) => id.toString());
+    // Show stories from people I follow and people who follow me
+    const ids = new Set();
+    (me.following || []).forEach((id) => ids.add(id.toString()));
+    (me.followers || []).forEach((id) => ids.add(id.toString()));
+    ids.delete(String(req.user.id));
 
     const stories = await Story.find({
-      author: { $in: followingIds },
+      author: { $in: [...ids] },
       createdAt: { $gte: new Date(Date.now() - DAY_MS) },
     })
       .sort({ createdAt: -1 })
