@@ -13,6 +13,7 @@ import authRoutes from './routes/auth.js';
 import postRoutes from './routes/postRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import messageRoutes from './routes/messageRoutes.js';
+import storyRoutes from './routes/storyRoutes.js';
 import Message from './models/Message.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -73,6 +74,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/posts', postRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/messages', messageRoutes);
+app.use('/api/stories', storyRoutes);
 
 // --- Start Server ---
 const PORT = process.env.PORT || 8000;
