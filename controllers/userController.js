@@ -1,6 +1,8 @@
 import User from '../models/User.js';
 import Post from '../models/Post.js';
 import Comment from '../models/Comment.js';
+import Story from '../models/Story.js';
+import Message from '../models/Message.js';
 
 export const getAllUsers = async (req, res) => {
   try {
@@ -151,17 +153,28 @@ export const searchUser = async (req, res) => {
 
 export const deleteProfile = async (req, res) => {
   try {
-    const userId = req.user.id; 
+    const userId = req.user.id;
 
-    
+    // Posts created by user
+    const userPosts = await Post.find({ author: userId }).select('_id');
+    const userPostIds = userPosts.map((p) => p._id);
+
+    await Comment.deleteMany({ $or: [{ userId }, { postId: { $in: userPostIds } }] });
     await Post.deleteMany({ author: userId });
 
+    // Remove user's likes and embedded comments from other posts
+    await Post.updateMany({ likes: userId }, { $pull: { likes: userId } });
+    await Post.updateMany({ 'comments.user': userId }, { $pull: { comments: { user: userId } } });
 
-    await Comment.deleteMany({ userId: userId });
+    // Stories and messages
+    await Story.deleteMany({ author: userId });
+    await Message.deleteMany({ $or: [{ sender: userId }, { receiver: userId }] });
 
+    // Remove user from followers/following of others
+    await User.updateMany({ followers: userId }, { $pull: { followers: userId } });
+    await User.updateMany({ following: userId }, { $pull: { following: userId } });
 
     const deletedUser = await User.findByIdAndDelete(userId);
-
     if (!deletedUser) {
       return res.status(404).json({ message: "User not found" });
     }
