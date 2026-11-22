@@ -54,9 +54,18 @@ export const createPost = async (req, res) => {
 // --- READ (Feed) ---
 export const getAllPosts = async (req, res) => {
   try {
-    const posts = await Post.find()
-      .sort({ createdAt: -1 })
-      .populate('author', 'username fullName profilePic');
+    const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 10, 1), 20);
+    const skip = (page - 1) * limit;
+
+    const [posts, total] = await Promise.all([
+      Post.find()
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .populate('author', 'username fullName profilePic'),
+      Post.countDocuments(),
+    ]);
 
     const postsWithDetails = await Promise.all(posts.map(async (post) => {
       const comments = await Comment.find({ postId: post._id })
@@ -69,7 +78,13 @@ export const getAllPosts = async (req, res) => {
       };
     }));
 
-    res.status(200).json(postsWithDetails);
+    const hasMore = skip + posts.length < total;
+    res.status(200).json({
+      posts: postsWithDetails,
+      hasMore,
+      nextPage: hasMore ? page + 1 : null,
+      total,
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
