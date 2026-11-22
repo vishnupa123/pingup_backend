@@ -56,7 +56,6 @@ export const sendMessage = async (req, res) => {
 export const getMyChatList = async (req, res) => {
   try {
     const loggedInUserId = req.user.id || req.user._id;
-    console.log("Logged In User ID:", loggedInUserId);
 
     const messages = await Message.find({
       $or: [
@@ -64,8 +63,6 @@ export const getMyChatList = async (req, res) => {
         { receiver: loggedInUserId }
       ]
     }).sort({ createdAt: -1 });
-
-    console.log("Found Messages:", messages);
 
     const userMap = new Map();
     messages.forEach((msg) => {

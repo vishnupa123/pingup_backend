@@ -4,18 +4,11 @@ import Comment from '../models/Comment.js';
 export const createPost = async (req, res) => {
   try {
     const { content } = req.body;
-    console.log('createPost request', {
-      contentLength: content?.length,
-      files: req.files?.length || 0,
-      user: req.user?.id,
-    });
 
     let imageUrls = [];
     let videoUrl;
     let mediaType = 'none';
 
-    console.log('createPost req.files:', req.files);
-    console.log('createPost req.body:', req.body);
     const files = [];
     if (Array.isArray(req.files)) {
       files.push(...req.files);
@@ -26,15 +19,6 @@ export const createPost = async (req, res) => {
 
     if (files.length > 0) {
       files.forEach((file) => {
-        console.log('uploaded file', {
-          fieldname: file.fieldname,
-          originalname: file.originalname,
-          mimetype: file.mimetype,
-          path: file.path,
-          secure_url: file.secure_url,
-          url: file.url,
-        });
-
         const url = file.path || file.secure_url || file.url || '';
         if (file.mimetype?.startsWith('video/')) {
           if (!videoUrl) videoUrl = url;

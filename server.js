@@ -37,7 +37,6 @@ const io = new Server(server, {
 // 📌 2. സോക്കറ്റ് കോഡ് കൃത്യമായി ഇവിടെ ചേർക്കുക:
 // ==========================================
 io.on('connection', (socket) => {
-  console.log(`User Connected: ${socket.id}`);
 
   // മെസ്സേജുകൾ അയക്കുമ്പോൾ ഡാറ്റാബേസിൽ സേവ് ചെയ്ത് ലൈവായി അയക്കുക
   socket.on('send_message', async (data) => {
@@ -56,7 +55,6 @@ io.on('connection', (socket) => {
   });
 
   socket.on('disconnect', () => {
-    console.log(`User Disconnected: ${socket.id}`);
   });
 });
 // ==========================================
@@ -85,7 +83,6 @@ const startServer = async () => {
     await connectDB(uri);
 
     server.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
     });
   } catch (error) {
     console.error('Failed to start server:', error.message);

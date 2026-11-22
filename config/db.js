@@ -22,7 +22,6 @@ const connectDB = async (mongoURI) => {
 
   try {
     await mongoose.connect(mongoURI, options);
-    console.log('MongoDB connected');
     return;
   } catch (error) {
     console.error('MongoDB connection failed:', error.message);
@@ -41,7 +40,6 @@ const connectDB = async (mongoURI) => {
       dns.setServers(['8.8.8.8', '1.1.1.1']);
       try {
         await mongoose.connect(mongoURI, options);
-        console.log('MongoDB connected after DNS fallback');
         return;
       } catch (retryError) {
         throw new Error(
