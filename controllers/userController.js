@@ -3,6 +3,7 @@ import Post from '../models/Post.js';
 import Comment from '../models/Comment.js';
 import Story from '../models/Story.js';
 import Message from '../models/Message.js';
+import Notification from '../models/Notification.js';
 
 export const getAllUsers = async (req, res) => {
   try {
@@ -112,6 +113,30 @@ export const followUnfollowUser = async (req, res) => {
     } else {
       await User.findByIdAndUpdate(currentUserId, { $push: { following: id } });
       await User.findByIdAndUpdate(id, { $push: { followers: currentUserId } });
+
+      try {
+        const notif = await Notification.create({
+          recipient: id,
+          sender: currentUserId,
+          type: 'follow',
+          message: `${currentUser.fullName || currentUser.username || 'Someone'} started following you`,
+        });
+        const io = req.app.get('io');
+        if (io) {
+          io.to(String(id)).emit('notification', {
+            _id: notif._id,
+            recipient: notif.recipient,
+            sender: { _id: currentUser._id, username: currentUser.username, fullName: currentUser.fullName, profilePic: currentUser.profilePic },
+            type: 'follow',
+            message: notif.message,
+            read: false,
+            createdAt: notif.createdAt,
+          });
+        }
+      } catch (notifyErr) {
+        console.error('Follow notification error:', notifyErr.message);
+      }
+
       res.status(200).json({ message: "User followed" });
     }
   } catch (error) {

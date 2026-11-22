@@ -33,13 +33,13 @@ const storySchema = new mongoose.Schema(
     expiresAt: {
       type: Date,
       default: () => new Date(Date.now() + 24 * 60 * 60 * 1000),
-      index: true,
     },
   },
   { timestamps: true }
 );
 
 storySchema.index({ author: 1, createdAt: -1 });
+storySchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
 const Story = mongoose.model('Story', storySchema);
 export default Story;

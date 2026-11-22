@@ -1,5 +1,7 @@
 import Post from '../models/Post.js';
 import Comment from '../models/Comment.js';
+import User from '../models/User.js';
+import Notification from '../models/Notification.js';
 
 export const createPost = async (req, res) => {
   try {
@@ -43,6 +45,38 @@ export const createPost = async (req, res) => {
       mediaType,
       author: req.user.id,
     });
+
+    try {
+      const author = await User.findById(req.user.id).select('username fullName followers');
+      const recipients = (author?.followers || []).map((id) => String(id)).filter((id) => id !== String(req.user.id));
+      if (recipients.length) {
+        const docs = recipients.map((recipient) => ({
+          recipient,
+          sender: req.user.id,
+          type: 'post',
+          post: newPost._id,
+          message: `${author?.fullName || author?.username || 'Someone'} added a new post`,
+        }));
+        const created = await Notification.insertMany(docs);
+        const io = req.app.get('io');
+        if (io) {
+          created.forEach((n) => {
+            io.to(String(n.recipient)).emit('notification', {
+              _id: n._id,
+              recipient: n.recipient,
+              sender: { _id: author?._id, username: author?.username, fullName: author?.fullName },
+              type: 'post',
+              post: newPost._id,
+              message: n.message,
+              read: false,
+              createdAt: n.createdAt,
+            });
+          });
+        }
+      }
+    } catch (notifyErr) {
+      console.error('Post notification error:', notifyErr.message);
+    }
 
     res.status(201).json(newPost);
   } catch (error) {

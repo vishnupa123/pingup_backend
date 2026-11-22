@@ -14,6 +14,7 @@ import postRoutes from './routes/postRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import messageRoutes from './routes/messageRoutes.js';
 import storyRoutes from './routes/storyRoutes.js';
+import notificationRoutes from './routes/notificationRoutes.js';
 import Message from './models/Message.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -38,8 +39,13 @@ const io = new Server(server, {
   }
 });
 
+app.set('io', io);
+
 // Socket events
 io.on('connection', (socket) => {
+  socket.on('join', (userId) => {
+    if (userId) socket.join(String(userId));
+  });
 
   socket.on('send_message', async (data) => {
     try {
@@ -75,6 +81,7 @@ app.use('/api/posts', postRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/stories', storyRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // --- Start Server ---
 const PORT = process.env.PORT || 8000;
