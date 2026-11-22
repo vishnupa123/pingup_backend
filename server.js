@@ -1,4 +1,4 @@
-import express from 'express';
+﻿import express from 'express';
 import http from 'http';
 import { Server } from 'socket.io';
 import dotenv from 'dotenv';
@@ -13,7 +13,7 @@ import authRoutes from './routes/auth.js';
 import postRoutes from './routes/postRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import messageRoutes from './routes/messageRoutes.js';
-import Message from './models/Message.js'; // 1. Message മോഡ ഇവിടെ ഇമ്പോർട്ട് ചെയ്യുക
+import Message from './models/Message.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -21,24 +21,25 @@ const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.join(__dirname, '.env') });
 
 const app = express();
-
 const server = http.createServer(app);
 
-// Socket.io കോൺഫിഗറേഷൻ
+const allowedOrigins = (process.env.CLIENT_URL || 'http://localhost:5173')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+// Socket.io
 const io = new Server(server, {
   cors: {
-    origin: "http://localhost:5173",
+    origin: allowedOrigins,
     methods: ["GET", "POST"],
     credentials: true
   }
 });
 
-// ==========================================
-// 📌 2. സോക്കറ്റ് കോഡ് കൃത്യമായി ഇവിടെ ചേർക്കുക:
-// ==========================================
+// Socket events
 io.on('connection', (socket) => {
 
-  // മെസ്സേജുകൾ അയക്കുമ്പോൾ ഡാറ്റാബേസിൽ സേവ് ചെയ്ത് ലൈവായി അയക്കുക
   socket.on('send_message', async (data) => {
     try {
       const newMessage = new Message({
@@ -57,11 +58,10 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => {
   });
 });
-// ==========================================
 
 // --- CORS & Middleware ---
 app.use(cors({
-  origin: "http://localhost:5173",
+  origin: allowedOrigins,
   credentials: true
 }));
 
