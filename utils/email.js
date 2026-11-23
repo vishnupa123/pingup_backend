@@ -3,13 +3,19 @@ import nodemailer from 'nodemailer';
 // Function to send OTP via email
 export const sendEmail = async (email, otp) => {
   try {
-    // Configure the transporter
+    // Configure the transporter (explicit SMTP settings work better on cloud hosts)
     const transporter = nodemailer.createTransport({
-      service: 'gmail',
+      host: 'smtp.gmail.com',
+      port: 587,
+      secure: false,
+      requireTLS: true,
       auth: {
         user: process.env.EMAIL_USER, // Your Gmail address from .env
         pass: process.env.EMAIL_PASS, // Your Gmail App Password from .env
       },
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 15000,
     });
 
     // Email content/template
