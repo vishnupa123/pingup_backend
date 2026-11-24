@@ -1,21 +1,17 @@
-// Send OTP email via Brevo HTTP API (Render free tier blocks SMTP ports)
+// Send OTP email via Resend HTTP API (Render free tier blocks SMTP ports)
 export const sendEmail = async (email, otp) => {
-  const apiKey = process.env.BREVO_API_KEY;
-  const senderEmail = process.env.BREVO_SENDER_EMAIL || process.env.EMAIL_USER;
-  const senderName = process.env.BREVO_SENDER_NAME || 'PingUp Support';
+  const apiKey = process.env.RESEND_API_KEY;
+  const from = process.env.RESEND_FROM_EMAIL || 'PingUp <onboarding@resend.dev>';
 
   if (!apiKey) {
-    throw new Error('BREVO_API_KEY is missing');
-  }
-  if (!senderEmail) {
-    throw new Error('Sender email is missing (set BREVO_SENDER_EMAIL or EMAIL_USER)');
+    throw new Error('RESEND_API_KEY is missing');
   }
 
   const payload = {
-    sender: { name: senderName, email: senderEmail },
-    to: [{ email }],
+    from,
+    to: [email],
     subject: 'PingUp Email Verification OTP',
-    htmlContent: `
+    html: `
       <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 10px; max-width: 500px; background-color: #f9f9f9;">
         <h2 style="color: #db2777; text-align: center;">Welcome to PingUp!</h2>
         <p style="color: #333; font-size: 16px;">Hello,</p>
@@ -32,19 +28,18 @@ export const sendEmail = async (email, otp) => {
   };
 
   try {
-    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+    const response = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
-        accept: 'application/json',
-        'content-type': 'application/json',
-        'api-key': apiKey,
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
       },
       body: JSON.stringify(payload),
     });
 
     if (!response.ok) {
       const errorText = await response.text().catch(() => '');
-      throw new Error(`Brevo API error ${response.status}: ${errorText}`);
+      throw new Error(`Resend API error ${response.status}: ${errorText}`);
     }
   } catch (error) {
     console.error('Error sending email:', error);
