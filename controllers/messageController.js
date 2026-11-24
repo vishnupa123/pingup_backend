@@ -58,10 +58,10 @@ export const getMessages = async (req, res) => {
 
     await cleanupExpiredMessages();
 
-    const partnerId =
-      String(loggedInUserId) === String(userId) ? otherUserId : userId;
-    await markConversationSeen(req.app.get('io'), loggedInUserId, partnerId);
-
+    // Listing a conversation must NOT mark it as seen. Otherwise simply loading
+    // the inbox starts the 2-day expiry timer and old messages disappear even
+    // though the receiver never opened the chat. Seen is set only by the
+    // explicit /api/messages/seen/:otherUserId call from the chat screen.
     const messages = await Message.find({
       $or: [
         { sender: userId, receiver: otherUserId },
