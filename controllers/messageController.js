@@ -1,13 +1,46 @@
 import Message from '../models/Message.js';
-import User from '../models/User.js'; // User മോഡൽ ഇവിടെ ഇമ്പോർട്ട് ചെയ്യുക
+import User from '../models/User.js';
+import { encryptMessage } from '../utils/messageCrypto.js';
+
+const TWO_DAYS_MS = 2 * 24 * 60 * 60 * 1000;
+
+const cleanupExpiredMessages = () =>
+  Message.deleteMany({ expiresAt: { $lte: new Date() } });
+
+const markConversationSeen = async (io, viewerId, senderId) => {
+  if (!viewerId || !senderId) return null;
+
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + TWO_DAYS_MS);
+
+  const result = await Message.updateMany(
+    {
+      receiver: viewerId,
+      sender: senderId,
+      $or: [{ seenAt: null }, { seenAt: { $exists: false } }],
+    },
+    { $set: { seenAt: now, expiresAt } }
+  );
+
+  if (result.modifiedCount > 0 && io) {
+    // Notify the sender so their chat can show "Seen".
+    io.to(String(senderId)).emit('messages_seen', {
+      conversationWith: String(viewerId),
+      seenAt: now,
+      expiresAt,
+    });
+  }
+
+  return { updated: result.modifiedCount, seenAt: now, expiresAt };
+};
 
 // get message(GET)
 export const getMessages = async (req, res) => {
   try {
     let { userId, otherUserId, id } = req.params;
+    const loggedInUserId = req.user.id || req.user._id;
 
     if (!otherUserId) {
-      const loggedInUserId = req.user.id || req.user._id;
       userId = loggedInUserId;
       otherUserId = id;
     }
@@ -15,6 +48,19 @@ export const getMessages = async (req, res) => {
     if (!userId || !otherUserId) {
       return res.status(400).json({ message: 'Missing user IDs in request.' });
     }
+
+    if (
+      String(loggedInUserId) !== String(userId) &&
+      String(loggedInUserId) !== String(otherUserId)
+    ) {
+      return res.status(403).json({ message: 'Not allowed to view this conversation.' });
+    }
+
+    await cleanupExpiredMessages();
+
+    const partnerId =
+      String(loggedInUserId) === String(userId) ? otherUserId : userId;
+    await markConversationSeen(req.app.get('io'), loggedInUserId, partnerId);
 
     const messages = await Message.find({
       $or: [
@@ -33,14 +79,23 @@ export const getMessages = async (req, res) => {
 export const sendMessage = async (req, res) => {
   try {
     const { sender, receiver, message } = req.body;
+    const loggedInUserId = req.user.id || req.user._id;
+
+    if (String(sender) !== String(loggedInUserId)) {
+      return res.status(403).json({ message: 'Not allowed to send as another user.' });
+    }
 
     const newMessage = new Message({
       sender,
       receiver,
-      message,
+      message: encryptMessage(message),
     });
 
     await newMessage.save();
+
+    const io = req.app.get('io');
+    if (io) io.to(String(receiver)).emit('receive_message', newMessage);
+    if (io) io.to(String(sender)).emit('receive_message', newMessage);
 
     res.status(201).json({
       success: true,
@@ -52,10 +107,37 @@ export const sendMessage = async (req, res) => {
   }
 };
 
+// Mark all messages from one user as seen and start their 2-day expiry.
+export const markMessagesSeen = async (req, res) => {
+  try {
+    const loggedInUserId = req.user.id || req.user._id;
+    const otherUserId = req.params.otherUserId || req.body.otherUserId;
+
+    if (!otherUserId) {
+      return res.status(400).json({ message: 'Missing conversation user ID.' });
+    }
+
+    await cleanupExpiredMessages();
+
+    const result = await markConversationSeen(
+      req.app.get('io'),
+      loggedInUserId,
+      otherUserId
+    );
+
+    res.status(200).json({ success: true, ...result });
+  } catch (error) {
+    console.error('Error marking messages seen:', error.message);
+    res.status(500).json({ success: false, message: 'Server error', error: error.message });
+  }
+};
+
 // get recent chat users list
 export const getMyChatList = async (req, res) => {
   try {
     const loggedInUserId = req.user.id || req.user._id;
+
+    await cleanupExpiredMessages();
 
     const messages = await Message.find({
       $or: [

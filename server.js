@@ -1,4 +1,4 @@
-﻿import express from 'express';
+import express from 'express';
 import http from 'http';
 import { Server } from 'socket.io';
 import dotenv from 'dotenv';
@@ -16,6 +16,7 @@ import messageRoutes from './routes/messageRoutes.js';
 import storyRoutes from './routes/storyRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
 import Message from './models/Message.js';
+import { encryptMessage } from './utils/messageCrypto.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -52,7 +53,7 @@ io.on('connection', (socket) => {
       const newMessage = new Message({
         sender: data.sender,
         receiver: data.receiver,
-        message: data.message
+        message: encryptMessage(data.message)
       });
       await newMessage.save();
 
