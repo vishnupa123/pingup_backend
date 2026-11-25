@@ -69,7 +69,7 @@ export const getMessages = async (req, res) => {
       ],
     }).sort({ createdAt: 1 });
 
-    res.status(200).json(messages);
+    res.status(200).json(messages.map((msg) => msg.toJSON()));
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
@@ -93,14 +93,15 @@ export const sendMessage = async (req, res) => {
 
     await newMessage.save();
 
+    const payload = newMessage.toJSON();
     const io = req.app.get('io');
-    if (io) io.to(String(receiver)).emit('receive_message', newMessage);
-    if (io) io.to(String(sender)).emit('receive_message', newMessage);
+    if (io) io.to(String(receiver)).emit('receive_message', payload);
+    if (io) io.to(String(sender)).emit('receive_message', payload);
 
     res.status(201).json({
       success: true,
       message: 'Message sent successfully',
-      data: newMessage,
+      data: payload,
     });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Server error', error: error.message });

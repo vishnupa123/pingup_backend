@@ -23,12 +23,9 @@ export const encryptMessage = (value) => {
   const encrypted = Buffer.concat([cipher.update(plain, 'utf8'), cipher.final()]);
   const tag = cipher.getAuthTag();
 
-  return [
-    PREFIX,
-    iv.toString('base64'),
-    tag.toString('base64'),
-    encrypted.toString('base64'),
-  ].join(':');
+  // Keep PREFIX's trailing colon as the only separator. Older records were
+  // written with an extra colon and are still handled by decryptMessage below.
+  return `${PREFIX}${[iv.toString('base64'), tag.toString('base64'), encrypted.toString('base64')].join(':')}`;
 };
 
 export const decryptMessage = (value) => {
@@ -38,7 +35,12 @@ export const decryptMessage = (value) => {
   if (!stored.startsWith(PREFIX)) return stored;
 
   try {
-    const [, ivPart, tagPart, dataPart] = stored.split(':');
+    // Remove the prefix first, then ignore the extra empty segment produced by
+    // the old `enc:v1::iv:tag:data` format.
+    const [ivPart, tagPart, dataPart] = stored
+      .slice(PREFIX.length)
+      .split(':')
+      .filter(Boolean);
     const iv = Buffer.from(ivPart, 'base64');
     const tag = Buffer.from(tagPart, 'base64');
     const encrypted = Buffer.from(dataPart, 'base64');
@@ -49,6 +51,6 @@ export const decryptMessage = (value) => {
     return Buffer.concat([decipher.update(encrypted), decipher.final()]).toString('utf8');
   } catch (error) {
     console.error('Error decrypting message:', error.message);
-    return '';
+    return 'Unable to decrypt message';
   }
 };

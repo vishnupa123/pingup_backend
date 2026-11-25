@@ -57,7 +57,7 @@ io.on('connection', (socket) => {
       });
       await newMessage.save();
 
-      io.emit('receive_message', newMessage);
+      io.emit('receive_message', newMessage.toJSON());
     } catch (error) {
       console.error('Error saving message:', error);
     }
