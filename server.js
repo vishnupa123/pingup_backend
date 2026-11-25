@@ -42,10 +42,35 @@ const io = new Server(server, {
 
 app.set('io', io);
 
+// userId -> Set of connected socket ids. A user is online if they have at
+// least one active socket registered through the `join` event.
+const onlineUsers = new Map();
+const broadcastOnlineUsers = () =>
+  io.emit('online_users', Array.from(onlineUsers.keys()));
+
 // Socket events
 io.on('connection', (socket) => {
+  let joinedUserId = null;
+
   socket.on('join', (userId) => {
-    if (userId) socket.join(String(userId));
+    if (!userId) return;
+    const id = String(userId);
+    if (joinedUserId === id) return;
+
+    if (joinedUserId) {
+      socket.leave(joinedUserId);
+      const previousSockets = onlineUsers.get(joinedUserId);
+      previousSockets?.delete(socket.id);
+      if (previousSockets && previousSockets.size === 0) {
+        onlineUsers.delete(joinedUserId);
+      }
+    }
+
+    joinedUserId = id;
+    socket.join(id);
+    if (!onlineUsers.has(id)) onlineUsers.set(id, new Set());
+    onlineUsers.get(id).add(socket.id);
+    broadcastOnlineUsers();
   });
 
   socket.on('send_message', async (data) => {
@@ -64,6 +89,11 @@ io.on('connection', (socket) => {
   });
 
   socket.on('disconnect', () => {
+    if (!joinedUserId) return;
+    const sockets = onlineUsers.get(joinedUserId);
+    sockets?.delete(socket.id);
+    if (sockets && sockets.size === 0) onlineUsers.delete(joinedUserId);
+    broadcastOnlineUsers();
   });
 });
 
