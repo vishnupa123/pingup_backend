@@ -7,6 +7,7 @@ const router = express.Router();
 
 // --- MY ACCOUNT (PRIVATE) ---
 router.get('/me', authMiddleware, userController.getMyProfile);
+router.get('/online', authMiddleware, userController.getOnlineUsers);
 router.patch('/update', authMiddleware, upload.fields([
   { name: 'profilePic', maxCount: 1 },
   { name: 'cover_photo', maxCount: 1 }

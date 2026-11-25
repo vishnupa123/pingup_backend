@@ -45,6 +45,7 @@ app.set('io', io);
 // userId -> Set of connected socket ids. A user is online if they have at
 // least one active socket registered through the `join` event.
 const onlineUsers = new Map();
+app.set('onlineUsers', onlineUsers);
 const broadcastOnlineUsers = () =>
   io.emit('online_users', Array.from(onlineUsers.keys()));
 

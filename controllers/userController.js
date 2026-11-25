@@ -14,6 +14,13 @@ export const getAllUsers = async (req, res) => {
   }
 };
 
+// REST fallback for the socket `online_users` broadcast. A refresh or a
+// missed socket event can otherwise leave every contact looking offline.
+export const getOnlineUsers = (_req, res) => {
+  const onlineUsers = _req.app.get('onlineUsers');
+  res.status(200).json({ onlineUsers: Array.from(onlineUsers?.keys?.() || []) });
+};
+
 export const getMyProfile = async (req, res) => {
   try {
     const user = await User.findById(req.user.id).select('-password');
