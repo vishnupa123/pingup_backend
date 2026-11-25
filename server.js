@@ -82,10 +82,26 @@ io.on('connection', (socket) => {
       });
       await newMessage.save();
 
-      io.emit('receive_message', newMessage.toJSON());
+      const payload = newMessage.toJSON();
+      io.to(String(data.receiver)).emit('receive_message', payload);
+      io.to(String(data.sender)).emit('receive_message', payload);
     } catch (error) {
       console.error('Error saving message:', error);
     }
+  });
+
+  socket.on('typing', (data) => {
+    if (!data?.receiver) return;
+    socket.to(String(data.receiver)).emit('typing', {
+      sender: String(data.sender || joinedUserId),
+    });
+  });
+
+  socket.on('stop_typing', (data) => {
+    if (!data?.receiver) return;
+    socket.to(String(data.receiver)).emit('stop_typing', {
+      sender: String(data.sender || joinedUserId),
+    });
   });
 
   socket.on('disconnect', () => {
